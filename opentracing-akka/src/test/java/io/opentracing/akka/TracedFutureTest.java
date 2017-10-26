@@ -5,11 +5,11 @@ import java.util.Map;
 
 import akka.actor.ActorSystem;
 import akka.actor.ActorRef;
-import io.opentracing.ActiveSpan;
+import io.opentracing.Scope;
 import io.opentracing.tag.Tags;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
-import io.opentracing.util.ThreadLocalActiveSpanSource;
+import io.opentracing.util.ThreadLocalScopeManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -25,7 +25,7 @@ import static akka.pattern.Patterns.ask;
 import static io.opentracing.akka.TracedFuture.tracedFuture;
 
 public class TracedFutureTest {
-    static final MockTracer mockTracer = new MockTracer(new ThreadLocalActiveSpanSource(),
+    static final MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),
         MockTracer.Propagator.TEXT_MAP);
 
     @Before
@@ -74,7 +74,7 @@ public class TracedFutureTest {
         Future tracedFuture = null;
         Exception exc = null;
 
-        try (ActiveSpan span = mockTracer.buildSpan("parent").startActive()) {
+        try (Scope span = mockTracer.buildSpan("parent").startActive()) {
             future = ask(actorRef, new MockActor.MockMessage(), timeout);
             tracedFuture = tracedFuture(future, actorRef, actorSystem, mockTracer);
         }
