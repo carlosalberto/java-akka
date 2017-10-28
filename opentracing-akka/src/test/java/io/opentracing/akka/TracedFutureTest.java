@@ -33,16 +33,12 @@ public class TracedFutureTest {
         mockTracer.reset();
     }
 
-    Timeout getDefaultTimeout() {
-        return new Timeout(Duration.create(5, "seconds"));
-    }
-
     @Test
     public void testTraced() {
         ActorSystem actorSystem = ActorSystem.create("actorSystem");
         ActorRef actorRef = actorSystem.actorOf(MockActor.props(), "actor1");
 
-        Timeout timeout = getDefaultTimeout();
+        Timeout timeout = TestUtils.getDefaultTimeout();
         Future future = ask(actorRef, new MockActor.MockMessage(), timeout);
         Future tracedFuture = tracedFuture(future, actorRef, actorSystem, mockTracer);
         Exception exc = null;
@@ -69,7 +65,7 @@ public class TracedFutureTest {
         ActorSystem actorSystem = ActorSystem.create("actorSystem");
         ActorRef actorRef = actorSystem.actorOf(MockActor.props(), "actor1");
 
-        Timeout timeout = getDefaultTimeout();
+        Timeout timeout = TestUtils.getDefaultTimeout();
         Future future = null;
         Future tracedFuture = null;
         Exception exc = null;
@@ -102,7 +98,7 @@ public class TracedFutureTest {
         ActorSystem actorSystem = ActorSystem.create("actorSystem");
         ActorRef actorRef = actorSystem.actorOf(MockActor.props(), "actor1");
 
-        Timeout timeout = getDefaultTimeout();
+        Timeout timeout = TestUtils.getDefaultTimeout();
         Future future = ask(actorRef, new MockActor.ErrorMessage(), timeout);
         Future tracedFuture = tracedFuture(future, actorRef, actorSystem, mockTracer);
         Exception exc = null;
