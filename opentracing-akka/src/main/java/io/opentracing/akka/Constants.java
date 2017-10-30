@@ -10,5 +10,5 @@ public final class Constants
 
     public static String ACTOR_PATH = "akka.actor.path";
 
-    public static String DEFAULT_OPERATION_NAME = "ask";
+    public static String EXECUTE_OPERATION_NAME = "execute";
 }

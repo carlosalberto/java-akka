@@ -35,12 +35,12 @@ public class TracedExecutionContextTest {
 
     @Test(expected=IllegalArgumentException.class)
     public void testIllegalContext() throws Exception {
-        new TracedExecutionContextTest(null, mockTracer);
+        new TracedExecutionContext(null, mockTracer, false);
     }
 
     @Test(expected=IllegalArgumentException.class)
     public void testIllegalTracer() throws Exception {
-        new TracedExecutionContextTest(ExecutionContext.global(), null);
+        new TracedExecutionContext(ExecutionContext.global(), null, false);
     }
 
     @Test
@@ -68,6 +68,32 @@ public class TracedExecutionContextTest {
         span.finish();
         assertEquals(1, mockTracer.finishedSpans().size());
         assertEquals(span, mockTracer.finishedSpans().get(0));
+    }
+
+    @Test
+    public void testCreateSpans() throws Exception {
+        ExecutionContext ec = new TracedExecutionContext(ExecutionContext.global(), mockTracer, true);
+        Future f = null;
+        Span parentSpan = null;
+
+        try (Scope scope = mockTracer.buildSpan("parent").startActive()) {
+            parentSpan = scope.span();
+
+            f = future(new Callable<Span>() {
+                @Override
+                public Span call() {
+                    assertNotNull(mockTracer.scopeManager().active());
+                    return mockTracer.scopeManager().active().span();
+                }
+            }, ec);
+        }
+
+        Span span = (Span)Await.result(f, TestUtils.getDefaultDuration());
+        List<MockSpan> finishedSpans = mockTracer.finishedSpans();
+        assertEquals(2, finishedSpans.size());
+        assertEquals(parentSpan, finishedSpans.get(0));
+        assertEquals(span, finishedSpans.get(1));
+        assertEquals(finishedSpans.get(0).context().spanId(), finishedSpans.get(1).parentId());
     }
 
     @Test

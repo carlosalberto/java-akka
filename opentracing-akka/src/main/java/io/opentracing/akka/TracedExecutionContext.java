@@ -15,12 +15,17 @@ import io.opentracing.util.GlobalTracer;
 public final class TracedExecutionContext implements ExecutionContextExecutor {
     final ExecutionContext ec;
     final Tracer tracer;
+    final boolean createSpans;
 
     public TracedExecutionContext(ExecutionContext ec) {
-        this(ec, GlobalTracer.get());
+        this(ec, GlobalTracer.get(), false);
     }
 
     public TracedExecutionContext(ExecutionContext ec, Tracer tracer) {
+        this(ec, tracer, false);
+    }
+
+    public TracedExecutionContext(ExecutionContext ec, Tracer tracer, boolean createSpans) {
         if (ec == null)
             throw new IllegalArgumentException("ec");
         if (tracer == null)
@@ -28,11 +33,12 @@ public final class TracedExecutionContext implements ExecutionContextExecutor {
 
         this.ec = ec;
         this.tracer = tracer;
+        this.createSpans = createSpans;
     }
 
     @Override
     public ExecutionContext prepare() {
-        if (tracer.scopeManager().active() == null)
+        if (!createSpans && tracer.scopeManager().active() == null)
             return ec; // Nothing to propagate/do.
 
         return new TracedExecutionContextImpl();
@@ -52,7 +58,10 @@ public final class TracedExecutionContext implements ExecutionContextExecutor {
         Span activeSpan;
 
         public TracedExecutionContextImpl() {
-            activeSpan = tracer.scopeManager().active().span();
+            if (createSpans)
+                activeSpan = tracer.buildSpan(Constants.EXECUTE_OPERATION_NAME).startManual();
+            else
+                activeSpan = tracer.scopeManager().active().span();
         }
 
         @Override
@@ -60,7 +69,10 @@ public final class TracedExecutionContext implements ExecutionContextExecutor {
             ec.execute(new Runnable() {
                 @Override
                 public void run() {
-                    try (Scope scope = tracer.scopeManager().activate(activeSpan, false)) {
+                    // Only deactivate the active Span if we created/own it.
+                    boolean deactivate = createSpans;
+
+                    try (Scope scope = tracer.scopeManager().activate(activeSpan, deactivate)) {
                         runnable.run();
                     }
                 }
