@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import io.opentracing.Scope;
+import io.opentracing.ScopeManager;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
@@ -16,6 +17,10 @@ public class MultiCloseSpan implements Span {
 
     public MultiCloseSpan(Span wrapped) {
         this.wrapped = wrapped;
+    }
+
+    public static Scope startActive(Tracer.SpanBuilder builder, Tracer tracer) {
+        return tracer.scopeManager().activate(new MultiCloseSpan(builder.startManual()), true);
     }
 
     public void capture() {

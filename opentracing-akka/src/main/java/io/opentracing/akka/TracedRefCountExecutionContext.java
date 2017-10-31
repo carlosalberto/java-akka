@@ -64,7 +64,7 @@ public final class TracedRefCountExecutionContext implements ExecutionContextExe
             ec.execute(new Runnable() {
                 @Override
                 public void run() {
-                    try (Scope scope = tracer.scopeManager().activate(activeSpan, true)) {
+                    try (Scope scope = tracer.scopeManager().activate(activeSpan)) {
                         runnable.run();
                     }
                 }

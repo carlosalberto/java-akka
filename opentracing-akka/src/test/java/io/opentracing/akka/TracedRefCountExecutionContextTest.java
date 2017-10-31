@@ -26,6 +26,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static io.opentracing.akka.MultiCloseSpan.startActive;
 
 public class TracedRefCountExecutionContextTest {
     static final MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),
@@ -50,14 +51,19 @@ public class TracedRefCountExecutionContextTest {
     public void testSimple() throws Exception {
         ExecutionContext ec = new TracedRefCountExecutionContext(ExecutionContext.global(), mockTracer);
         Future f = null;
+        Span span = null;
 
-        Span span = new MultiCloseSpan(mockTracer.buildSpan("one").startManual());
-        try (Scope scope = mockTracer.scopeManager().activate(span, true)) {
+        try (Scope scope = startActive(mockTracer.buildSpan("one"), mockTracer)) {
+            span = scope.span();
+
             f = future(new Callable<Span>() {
                 @Override
                 public Span call() {
                     assertNotNull(mockTracer.scopeManager().active());
-                    return mockTracer.scopeManager().active().span();
+
+                    Span activeSpan = mockTracer.scopeManager().active().span();
+                    activeSpan.setTag("done", Boolean.TRUE);
+                    return activeSpan;
                 }
             }, ec);
         }
@@ -65,17 +71,19 @@ public class TracedRefCountExecutionContextTest {
         Object result = Await.result(f, TestUtils.getDefaultDuration());
         assertEquals(span, result);
         assertEquals(1, mockTracer.finishedSpans().size());
-        assertEquals("one", mockTracer.finishedSpans().get(0).operationName());
+
+        MockSpan mockSpan = mockTracer.finishedSpans().get(0);
+        assertEquals("one", mockSpan.operationName());
+        assertEquals(Boolean.TRUE, mockSpan.tags().get("done"));
     }
 
     @Test
-    public void testMulti() throws Exception {
+    public void testMultiple() throws Exception {
         ExecutionContext ec = new TracedRefCountExecutionContext(ExecutionContext.global(), mockTracer);
         List<Future<Span>> futures = new LinkedList<Future<Span>>();
         Random rand = new Random();
 
-        Span span = new MultiCloseSpan(mockTracer.buildSpan("one").startManual());
-        try (Scope scope = mockTracer.scopeManager().activate(span, true)) {
+        try (Scope scope = startActive(mockTracer.buildSpan("one"), mockTracer)) {
 
             for (int i = 0; i < 5; i++) {
                 futures.add(future(new Callable<Span>() {
@@ -97,5 +105,40 @@ public class TracedRefCountExecutionContextTest {
         Await.result(f, TestUtils.getDefaultDuration());
         assertEquals(1, mockTracer.finishedSpans().size());
         assertEquals(5, mockTracer.finishedSpans().get(0).tags().size());
+    }
+
+    @Test
+    public void testPipeline() throws Exception {
+        ExecutionContext ec = new TracedRefCountExecutionContext(ExecutionContext.global(), mockTracer);
+        Future f = null;
+
+        try (Scope scope = startActive(mockTracer.buildSpan("one"), mockTracer)) {
+            f = future(new Callable<Future>() {
+                @Override
+                public Future call() {
+                    assertNotNull(mockTracer.scopeManager().active());
+                    mockTracer.scopeManager().active().span().setTag("1", Boolean.TRUE);
+
+                    return future(new Callable<Boolean>() {
+                        @Override
+                        public Boolean call() {
+                            assertNotNull(mockTracer.scopeManager().active());
+                            mockTracer.scopeManager().active().span().setTag("2", Boolean.TRUE);
+                            return true;
+                        }
+                    }, ec);
+                }
+            }, ec);
+        }
+
+        Future f2 = (Future)Await.result(f, TestUtils.getDefaultDuration());
+        Await.result(f2, TestUtils.getDefaultDuration());
+        assertEquals(1, mockTracer.finishedSpans().size());
+
+        MockSpan mockSpan = mockTracer.finishedSpans().get(0);
+        assertEquals("one", mockSpan.operationName());
+        assertEquals(2, mockSpan.tags().size());
+        assertEquals(Boolean.TRUE, mockSpan.tags().get("1"));
+        assertEquals(Boolean.TRUE, mockSpan.tags().get("2"));
     }
 }
