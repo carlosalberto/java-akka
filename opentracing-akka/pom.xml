@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.opentracing.akka</groupId>
   <artifactId>opentracing-akka</artifactId>
-  <packaging>pom</packaging>
+  <packaging>rar</packaging>
   <version>0.0.1-SNAPSHOT</version>
 
   <name>${project.groupId}:${project.artifactId}</name>
