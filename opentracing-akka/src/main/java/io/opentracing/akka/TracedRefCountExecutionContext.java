@@ -54,9 +54,9 @@ public final class TracedRefCountExecutionContext implements ExecutionContextExe
         public TracedRefCountExecutionContextImpl() {
             activeSpan = tracer.scopeManager().active().span();
 
-            // If the Span is a MultiCloseSpan one, mark it as being captured.
-            if (activeSpan instanceof MultiCloseSpan)
-                ((MultiCloseSpan)activeSpan).capture();
+            // If the Span is a RefCountSpan one, mark it as being captured.
+            if (activeSpan instanceof RefCountSpan)
+                ((RefCountSpan)activeSpan).capture();
         }
 
         @Override

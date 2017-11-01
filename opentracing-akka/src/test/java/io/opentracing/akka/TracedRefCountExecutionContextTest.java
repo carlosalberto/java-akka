@@ -26,7 +26,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static io.opentracing.akka.MultiCloseSpan.startActive;
+import static io.opentracing.akka.RefCountSpan.startActive;
 
 public class TracedRefCountExecutionContextTest {
     static final MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),

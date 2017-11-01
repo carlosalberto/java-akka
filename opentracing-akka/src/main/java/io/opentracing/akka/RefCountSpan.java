@@ -11,16 +11,16 @@ import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
 import io.opentracing.util.GlobalTracer;
 
-public class MultiCloseSpan implements Span {
+public class RefCountSpan implements Span {
     Span wrapped;
     AtomicInteger refCount = new AtomicInteger(1);
 
-    public MultiCloseSpan(Span wrapped) {
+    public RefCountSpan(Span wrapped) {
         this.wrapped = wrapped;
     }
 
     public static Scope startActive(Tracer.SpanBuilder builder, Tracer tracer) {
-        return tracer.scopeManager().activate(new MultiCloseSpan(builder.startManual()), true);
+        return tracer.scopeManager().activate(new RefCountSpan(builder.startManual()), true);
     }
 
     public void capture() {
@@ -45,19 +45,19 @@ public class MultiCloseSpan implements Span {
     }
 
     @Override
-    public MultiCloseSpan setTag(String key, String value) {
+    public RefCountSpan setTag(String key, String value) {
         wrapped.setTag(key, value);
         return this;
     }
 
     @Override
-    public MultiCloseSpan setTag(String key, boolean value) {
+    public RefCountSpan setTag(String key, boolean value) {
         wrapped.setTag(key, value);
         return this;
     }
 
     @Override
-    public MultiCloseSpan setTag(String key, Number value) {
+    public RefCountSpan setTag(String key, Number value) {
         wrapped.setTag(key, value);
         return this;
     }
@@ -69,7 +69,7 @@ public class MultiCloseSpan implements Span {
     }
 
     @Override
-    public final MultiCloseSpan log(long timestampMicros, Map<String, ?> fields) {
+    public final RefCountSpan log(long timestampMicros, Map<String, ?> fields) {
         wrapped.log(timestampMicros, fields);
         return this;
     }
@@ -81,13 +81,13 @@ public class MultiCloseSpan implements Span {
     }
 
     @Override
-    public MultiCloseSpan log(long timestampMicroseconds, String event) {
+    public RefCountSpan log(long timestampMicroseconds, String event) {
         wrapped.log(timestampMicroseconds, event);
         return this;
     }
 
     @Override
-    public MultiCloseSpan setBaggageItem(String key, String value) {
+    public RefCountSpan setBaggageItem(String key, String value) {
         wrapped.setBaggageItem(key, value);
         return this;
     }
@@ -98,7 +98,7 @@ public class MultiCloseSpan implements Span {
     }
 
     @Override
-    public MultiCloseSpan setOperationName(String operationName) {
+    public RefCountSpan setOperationName(String operationName) {
         wrapped.setOperationName(operationName);
         return this;
     }
