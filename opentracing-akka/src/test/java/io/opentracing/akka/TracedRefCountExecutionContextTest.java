@@ -6,6 +6,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.Callable;
 
+import akka.dispatch.Mapper;
+import akka.dispatch.OnComplete;
 import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.tag.Tags;
@@ -140,5 +142,41 @@ public class TracedRefCountExecutionContextTest {
         assertEquals(2, mockSpan.tags().size());
         assertEquals(Boolean.TRUE, mockSpan.tags().get("1"));
         assertEquals(Boolean.TRUE, mockSpan.tags().get("2"));
+    }
+
+    @Test
+    public void testConvert() throws Exception {
+        ExecutionContext ec = new TracedRefCountExecutionContext(ExecutionContext.global(), mockTracer);
+        Future f = null;
+
+        try (Scope scope = startActive(mockTracer.buildSpan("one"), mockTracer)) {
+            f = future(new Callable<Integer>() {
+                @Override
+                public Integer call() {
+                    int result = 1099;
+                    mockTracer.scopeManager().active().span().setTag("before.map", result);
+                    return result;
+                }
+            }, ec)
+            .map(new Mapper<Integer, String>() {
+                @Override
+                public String apply(Integer n) {
+                    String result = n.toString();
+                    mockTracer.scopeManager().active().span().setTag("after.map", result);
+                    return result;
+                }
+            }, ec)
+            .andThen(new OnComplete<String>() {
+                @Override
+                public void onComplete(Throwable failure, String s) {
+                    Boolean error = failure == null ? Boolean.FALSE : Boolean.TRUE;
+                    mockTracer.scopeManager().active().span().setTag("error", error);
+                }
+            }, ec);
+        }
+
+        Await.result(f, TestUtils.getDefaultDuration());
+        assertEquals(1, mockTracer.finishedSpans().size());
+        assertEquals(3, mockTracer.finishedSpans().get(0).tags().size());
     }
 }
