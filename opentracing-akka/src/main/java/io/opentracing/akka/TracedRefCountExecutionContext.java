@@ -49,14 +49,15 @@ public final class TracedRefCountExecutionContext implements ExecutionContextExe
     }
 
     class TracedRefCountExecutionContextImpl implements ExecutionContextExecutor {
-        Span activeSpan;
+        RefCountSpan span;
 
         public TracedRefCountExecutionContextImpl() {
-            activeSpan = tracer.scopeManager().active().span();
+            Span activeSpan = tracer.scopeManager().active().span();
+            if (!(activeSpan instanceof RefCountSpan))
+                throw new IllegalStateException("Active Span is not an instance of RefCountSpan");
 
-            // If the Span is a RefCountSpan one, mark it as being captured.
-            if (activeSpan instanceof RefCountSpan)
-                ((RefCountSpan)activeSpan).capture();
+            span = (RefCountSpan)activeSpan;
+            span.capture(); // Signal we are holding a reference.
         }
 
         @Override
@@ -64,7 +65,7 @@ public final class TracedRefCountExecutionContext implements ExecutionContextExe
             ec.execute(new Runnable() {
                 @Override
                 public void run() {
-                    try (Scope scope = tracer.scopeManager().activate(activeSpan)) {
+                    try (Scope scope = tracer.scopeManager().activate(span, true)) {
                         runnable.run();
                     }
                 }
