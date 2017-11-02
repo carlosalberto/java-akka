@@ -41,7 +41,7 @@ public class RefCountSpan implements Span {
 
     @Override
     public void finish(long finishMicros) {
-        wrapped.finish(finishMicros);
+        throw new IllegalStateException("RefCountSpan does not support finish() with an explicit timestamp");
     }
 
     @Override
