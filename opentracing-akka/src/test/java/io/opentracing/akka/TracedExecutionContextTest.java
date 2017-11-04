@@ -3,7 +3,9 @@ package io.opentracing.akka;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
+import akka.dispatch.OnComplete;
 import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.tag.Tags;
@@ -19,10 +21,13 @@ import scala.concurrent.Future;
 import scala.concurrent.duration.Duration;
 
 import static akka.dispatch.Futures.future;
+import static org.awaitility.Awaitility.await;
+import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 public class TracedExecutionContextTest {
     static final MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),
@@ -128,5 +133,48 @@ public class TracedExecutionContextTest {
         Boolean isActive = (Boolean)Await.result(f, TestUtils.getDefaultDuration());
         assertFalse(isActive);
         assertEquals(0, mockTracer.finishedSpans().size());
+    }
+
+    @Test
+    public void testConvert() throws Exception {
+        ExecutionContext ec = new TracedExecutionContext(ExecutionContext.global(), mockTracer);
+
+        try (Scope scope = mockTracer.buildSpan("one").startActive(false)) {
+            future(new Callable<Boolean>() {
+                @Override
+                public Boolean call() {
+                    assertNotNull(mockTracer.scopeManager().active());
+                    mockTracer.scopeManager().active().span().setTag("main", Boolean.TRUE);
+                    return Boolean.TRUE;
+                }
+            }, ec)
+            .andThen(new OnComplete<Boolean>() {
+                @Override
+                public void onComplete(Throwable failure, Boolean result) {
+                    assertNotNull(mockTracer.scopeManager().active());
+                    mockTracer.scopeManager().active().span().setTag("interceptor", Boolean.TRUE);
+                }
+            }, ec)
+            .onComplete(new OnComplete<Boolean>() {
+                @Override
+                public void onComplete(Throwable failure, Boolean result) {
+                    assertNotNull(mockTracer.scopeManager().active());
+                    mockTracer.scopeManager().active().span().setTag("done", Boolean.TRUE);
+                    mockTracer.scopeManager().active().span().finish();
+                }
+            }, ec);
+
+            await().atMost(TestUtils.DEFAULT_TIMEOUT, TimeUnit.SECONDS)
+                .until(TestUtils.finishedSpansSize(mockTracer), equalTo(1));
+
+            List<MockSpan> finishedSpans = mockTracer.finishedSpans();
+            assertEquals(1, finishedSpans.size());
+
+            Map<String, ?> tags = finishedSpans.get(0).tags();
+            assertEquals(3, tags.size());
+            assertTrue(tags.containsKey("main"));
+            assertTrue(tags.containsKey("interceptor"));
+            assertTrue(tags.containsKey("done"));
+        }
     }
 }
