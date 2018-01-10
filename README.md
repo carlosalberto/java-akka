@@ -51,20 +51,18 @@ future(new Callable<String>() {
 ```
 
 
-### Reference-Count Span handling
+### Auto finish Span handling
 
-Reference-count style Span handling is also supported through a `Span` wrapper
-class, which will keep track of how many `Span.finish()` calls need to happen
-before the wrapped `Span` is actually finished.
-
-A `TracedRefCountExecutionContext` is provided to be used along `RefCountSpan`,
-and will automatically increase/decrease the reference count for the `Span` (besided propagating such
-`Span`):
+Span auto-finish is supported through a reference-count system using the specific
+`AutoFinishScopeManager` -which needs to be provided at `Tracer` creation time-,
+along with using `TracedAutoFinishExecutionContext`:
 
 ```java
-ExecutionContext ec = new TracedRefCountExecutionContext(executionContext, tracer);
+ScopeManager scopeManager = new AutoFinishScopeManager();
+Tracer tracer = ... // Use the created scopeManager here.
+ExecutionContext ec = new TracedAutoFinishExecutionContext(executionContext, tracer);
 ...
-try (Scope scope = RefCountSpan.startActive(tracer.buildSpan("request"), tracer)) {
+try (Scope scope = tracer.buildSpan("request").startActive()) {
     future(new Callable<String>() {
 	// Span will be reactivated here
 	...
@@ -77,8 +75,9 @@ try (Scope scope = RefCountSpan.startActive(tracer.buildSpan("request"), tracer)
 } 
 ```
 
-Reference count is also increased when registering `onComplete`, `andThen`, `map`, and similar
-`Future` methods, and decreased as well upon being executed:
+Reference count for `Span`s is set to 1 at creation, and is increased when
+registering `onComplete`, `andThen`, `map`, and similar
+`Future` methods - and is decreased upon having such function/callback executed:
 
 ```java
 future(new Callable<String>() {
@@ -93,15 +92,3 @@ future(new Callable<String>() {
     ...
 }, ec);
 ```
-
-### Issues.
-
-The approach to do reference count here was to use a `Span` wrapper, which
-finishes the wrapped `Span` depending on the number of `finish()` calls.
-This wouldn't work just fine with `Span.finish(long)` as the parameter
-would then be ignored. Should we probably then throw an Exception here?
-
-Currently `TracedRefCountExecutionContext` expects any active `Span`
-to be an instance of `RefCountSpan` - we could easily make it support
-standard `Span` instances - but in this case a question arises: should
-we call `Span.finish()` upon completion?

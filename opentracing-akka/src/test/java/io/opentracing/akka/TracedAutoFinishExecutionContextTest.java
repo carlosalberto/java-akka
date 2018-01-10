@@ -28,10 +28,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static io.opentracing.akka.RefCountSpan.startActive;
 
-public class TracedRefCountExecutionContextTest {
-    static final MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),
+public class TracedAutoFinishExecutionContextTest {
+    static final MockTracer mockTracer = new MockTracer(new AutoFinishScopeManager(),
         MockTracer.Propagator.TEXT_MAP);
 
     @Before
@@ -41,21 +40,21 @@ public class TracedRefCountExecutionContextTest {
 
     @Test(expected=IllegalArgumentException.class)
     public void testIllegalContext() throws Exception {
-        new TracedRefCountExecutionContext(null, mockTracer);
+        new TracedAutoFinishExecutionContext(null, mockTracer);
     }
 
     @Test(expected=IllegalArgumentException.class)
     public void testIllegalTracer() throws Exception {
-        new TracedRefCountExecutionContext(ExecutionContext.global(), null);
+        new TracedAutoFinishExecutionContext(ExecutionContext.global(), null);
     }
 
     @Test
     public void testSimple() throws Exception {
-        ExecutionContext ec = new TracedRefCountExecutionContext(ExecutionContext.global(), mockTracer);
+        ExecutionContext ec = new TracedAutoFinishExecutionContext(ExecutionContext.global(), mockTracer);
         Future f = null;
         Span span = null;
 
-        try (Scope scope = startActive(mockTracer.buildSpan("one"), mockTracer)) {
+        try (Scope scope = mockTracer.buildSpan("one").startActive()) {
             span = scope.span();
 
             f = future(new Callable<Span>() {
@@ -81,11 +80,11 @@ public class TracedRefCountExecutionContextTest {
 
     @Test
     public void testMultiple() throws Exception {
-        ExecutionContext ec = new TracedRefCountExecutionContext(ExecutionContext.global(), mockTracer);
+        ExecutionContext ec = new TracedAutoFinishExecutionContext(ExecutionContext.global(), mockTracer);
         List<Future<Span>> futures = new LinkedList<Future<Span>>();
         Random rand = new Random();
 
-        try (Scope scope = startActive(mockTracer.buildSpan("one"), mockTracer)) {
+        try (Scope scope = mockTracer.buildSpan("one").startActive()) {
 
             for (int i = 0; i < 5; i++) {
                 futures.add(future(new Callable<Span>() {
@@ -111,10 +110,10 @@ public class TracedRefCountExecutionContextTest {
 
     @Test
     public void testPipeline() throws Exception {
-        ExecutionContext ec = new TracedRefCountExecutionContext(ExecutionContext.global(), mockTracer);
+        ExecutionContext ec = new TracedAutoFinishExecutionContext(ExecutionContext.global(), mockTracer);
         Future f = null;
 
-        try (Scope scope = startActive(mockTracer.buildSpan("one"), mockTracer)) {
+        try (Scope scope = mockTracer.buildSpan("one").startActive()) {
             f = future(new Callable<Future>() {
                 @Override
                 public Future call() {
@@ -146,10 +145,10 @@ public class TracedRefCountExecutionContextTest {
 
     @Test
     public void testConvert() throws Exception {
-        ExecutionContext ec = new TracedRefCountExecutionContext(ExecutionContext.global(), mockTracer);
+        ExecutionContext ec = new TracedAutoFinishExecutionContext(ExecutionContext.global(), mockTracer);
         Future f = null;
 
-        try (Scope scope = startActive(mockTracer.buildSpan("one"), mockTracer)) {
+        try (Scope scope = mockTracer.buildSpan("one").startActive()) {
             f = future(new Callable<Integer>() {
                 @Override
                 public Integer call() {

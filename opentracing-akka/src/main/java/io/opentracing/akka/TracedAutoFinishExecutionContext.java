@@ -12,15 +12,15 @@ import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
 import io.opentracing.util.GlobalTracer;
 
-public final class TracedRefCountExecutionContext implements ExecutionContextExecutor {
+public final class TracedAutoFinishExecutionContext implements ExecutionContextExecutor {
     final ExecutionContext ec;
     final Tracer tracer;
 
-    public TracedRefCountExecutionContext(ExecutionContext ec) {
+    public TracedAutoFinishExecutionContext(ExecutionContext ec) {
         this(ec, GlobalTracer.get());
     }
 
-    public TracedRefCountExecutionContext(ExecutionContext ec, Tracer tracer) {
+    public TracedAutoFinishExecutionContext(ExecutionContext ec, Tracer tracer) {
         if (ec == null)
             throw new IllegalArgumentException("ec");
         if (tracer == null)
@@ -35,7 +35,7 @@ public final class TracedRefCountExecutionContext implements ExecutionContextExe
         if (tracer.scopeManager().active() == null)
             return ec; // Nothing to propagate/do.
 
-        return new TracedRefCountExecutionContextImpl();
+        return new TracedAutoFinishExecutionContextImpl();
     }
 
     @Override
@@ -48,16 +48,15 @@ public final class TracedRefCountExecutionContext implements ExecutionContextExe
         ec.reportFailure(cause);
     }
 
-    class TracedRefCountExecutionContextImpl implements ExecutionContextExecutor {
-        RefCountSpan span;
+    class TracedAutoFinishExecutionContextImpl implements ExecutionContextExecutor {
+        AutoFinishScope.Continuation continuation;
 
-        public TracedRefCountExecutionContextImpl() {
-            Span activeSpan = tracer.scopeManager().active().span();
-            if (!(activeSpan instanceof RefCountSpan))
-                throw new IllegalStateException("Active Span is not an instance of RefCountSpan");
+        public TracedAutoFinishExecutionContextImpl() {
+            Scope scope = tracer.scopeManager().active();
+            if (!(scope instanceof AutoFinishScope))
+                throw new IllegalStateException("Usage of AutoFinishScopeManager required.");
 
-            span = (RefCountSpan)activeSpan;
-            span.capture(); // Signal we are holding a reference.
+            continuation = ((AutoFinishScope)scope).capture();
         }
 
         @Override
@@ -65,7 +64,8 @@ public final class TracedRefCountExecutionContext implements ExecutionContextExe
             ec.execute(new Runnable() {
                 @Override
                 public void run() {
-                    try (Scope scope = tracer.scopeManager().activate(span, true)) {
+                    //try (Scope scope = tracer.scopeManager().activate(span, true)) {
+                    try (Scope scope = continuation.activate()) {
                         runnable.run();
                     }
                 }
