@@ -54,7 +54,7 @@ public class TracedAutoFinishExecutionContextTest {
         Future f = null;
         Span span = null;
 
-        try (Scope scope = mockTracer.buildSpan("one").startActive()) {
+        try (Scope scope = mockTracer.buildSpan("one").startActive(true)) {
             span = scope.span();
 
             f = future(new Callable<Span>() {
@@ -84,7 +84,7 @@ public class TracedAutoFinishExecutionContextTest {
         List<Future<Span>> futures = new LinkedList<Future<Span>>();
         Random rand = new Random();
 
-        try (Scope scope = mockTracer.buildSpan("one").startActive()) {
+        try (Scope scope = mockTracer.buildSpan("one").startActive(true)) {
 
             for (int i = 0; i < 5; i++) {
                 futures.add(future(new Callable<Span>() {
@@ -113,7 +113,7 @@ public class TracedAutoFinishExecutionContextTest {
         ExecutionContext ec = new TracedAutoFinishExecutionContext(ExecutionContext.global(), mockTracer);
         Future f = null;
 
-        try (Scope scope = mockTracer.buildSpan("one").startActive()) {
+        try (Scope scope = mockTracer.buildSpan("one").startActive(true)) {
             f = future(new Callable<Future>() {
                 @Override
                 public Future call() {
@@ -148,7 +148,7 @@ public class TracedAutoFinishExecutionContextTest {
         ExecutionContext ec = new TracedAutoFinishExecutionContext(ExecutionContext.global(), mockTracer);
         Future f = null;
 
-        try (Scope scope = mockTracer.buildSpan("one").startActive()) {
+        try (Scope scope = mockTracer.buildSpan("one").startActive(true)) {
             f = future(new Callable<Integer>() {
                 @Override
                 public Integer call() {

@@ -81,7 +81,7 @@ public class TracedExecutionContextTest {
         Future f = null;
         Span parentSpan = null;
 
-        try (Scope scope = mockTracer.buildSpan("parent").startActive()) {
+        try (Scope scope = mockTracer.buildSpan("parent").startActive(true)) {
             parentSpan = scope.span();
 
             f = future(new Callable<Span>() {
