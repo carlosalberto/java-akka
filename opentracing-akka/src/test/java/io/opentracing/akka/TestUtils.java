@@ -1,12 +1,15 @@
 package io.opentracing.akka;
 
 import java.util.concurrent.Callable;
+import java.lang.reflect.Field;
 
 import akka.util.Timeout;
 import scala.concurrent.duration.Duration;
 import scala.concurrent.duration.FiniteDuration;
 
+import io.opentracing.noop.NoopTracerFactory;
 import io.opentracing.mock.MockTracer;
+import io.opentracing.util.GlobalTracer;
 
 public final class TestUtils {
     private TestUtils() {}
@@ -28,5 +31,17 @@ public final class TestUtils {
                 return tracer.finishedSpans().size();
             }
         };
+    }
+
+    /* Copied from opentracing-java/opentracing-util/src/test/java/io/opentracing/util/GlobalTracerTestUtil.java */
+    public static void resetGlobalTracer() {
+        try {
+            Field globalTracerField = GlobalTracer.class.getDeclaredField("tracer");
+            globalTracerField.setAccessible(true);
+            globalTracerField.set(null, NoopTracerFactory.create());
+            globalTracerField.setAccessible(false);
+        } catch (Exception e) {
+            throw new IllegalStateException("Error reflecting GlobalTracer.tracer: " + e.getMessage(), e);
+        }
     }
 }
