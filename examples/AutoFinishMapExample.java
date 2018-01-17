@@ -9,19 +9,19 @@ import scala.concurrent.Future;
 import io.opentracing.Tracer;
 import io.opentracing.Scope;
 import io.opentracing.Span;
-import io.opentracing.akka.RefCountSpan;
-import io.opentracing.akka.TracedRefCountExecutionContext;
+import io.opentracing.util.AutoFinishScopeManager;
+import io.opentracing.akka.TracedAutoFinishExecutionContext;
 
 import static akka.dispatch.Futures.future;
 
-public class RefCountingMapExampleTest {
+public class AutoFinishingMapExampleTest {
     public static void main(String [] args) {
-        //Tracer tracer = null; // Set your tracer here.
-        ExecutionContext ec = new TracedRefCountExecutionContext(ExecutionContext.global(), tracer);
+        Tracer tracer = null; // Set your tracer here, and make sure AutoFinishScopeManager is used.
+        ExecutionContext ec = new TracedAutoFinishExecutionContext(ExecutionContext.global(), tracer);
 
         // The Span will be finished once the last callback is done - that is,
         // the OnComplete invocation, thus no need to manually finish it.
-        try (Scope scope = RefCountSpan.startActive(tracer.buildSpan("one"), tracer)) {
+        try (Scope scope = tracer.buildSpan("one").startActive()) {
             future(new Callable<Integer>() {
                 @Override
                 public Integer call() {

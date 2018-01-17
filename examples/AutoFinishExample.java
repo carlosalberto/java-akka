@@ -7,18 +7,18 @@ import scala.concurrent.Future;
 import io.opentracing.Tracer;
 import io.opentracing.Scope;
 import io.opentracing.Span;
-import io.opentracing.akka.RefCountSpan;
-import io.opentracing.akka.TracedRefCountExecutionContext;
+import io.opentracing.util.AutoFinishScopeManager;
+import io.opentracing.akka.TracedAutoFinishExecutionContext;
 
 import static akka.dispatch.Futures.future;
 
-public class RefCountingExample {
+public class AutoFinishExample {
     public static void main(String [] args) {
-        Tracer tracer = null; // Set your tracer here.
-        ExecutionContext ec = new TracedRefCountExecutionContext(ExecutionContext.global(), tracer);
+        Tracer tracer = null; // Set your tracer here, and make sure AutoFinishScopeManager is used.
+        ExecutionContext ec = new TracedAutoFinishExecutionContext(ExecutionContext.global(), tracer);
 
         // Span will be propagated and finished when all the 3 tasks are done.
-        try (Scope scope = RefCountSpan.startActive(tracer.buildSpan("one"), tracer)) {
+        try (Scope scope = tracer.buildSpan("one").startActive()) {
             future(new Callable<Boolean>() {
                 @Override
                 public Boolean call() {
