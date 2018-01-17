@@ -18,7 +18,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class TracedMessageTest {
-    static final MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager());
+    final MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager());
 
     @Before
     public void before() throws Exception {

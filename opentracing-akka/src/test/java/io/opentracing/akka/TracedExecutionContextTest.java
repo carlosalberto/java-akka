@@ -30,7 +30,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class TracedExecutionContextTest {
-    static final MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),
+    final MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),
         MockTracer.Propagator.TEXT_MAP);
 
     @Before
@@ -81,7 +81,7 @@ public class TracedExecutionContextTest {
         Future f = null;
         Span parentSpan = null;
 
-        try (Scope scope = mockTracer.buildSpan("parent").startActive(true)) {
+        try (Scope scope = mockTracer.buildSpan("parent").startActive(false)) {
             parentSpan = scope.span();
 
             f = future(new Callable<Span>() {
@@ -94,11 +94,16 @@ public class TracedExecutionContextTest {
         }
 
         Span span = (Span)Await.result(f, TestUtils.getDefaultDuration());
+        await().atMost(TestUtils.DEFAULT_CALLBACK_SYNC_TIMEOUT, TimeUnit.SECONDS)
+                .until(TestUtils.finishedSpansSize(mockTracer), equalTo(1));
+        assertEquals(1, mockTracer.finishedSpans().size());
+
+        parentSpan.finish();
         List<MockSpan> finishedSpans = mockTracer.finishedSpans();
         assertEquals(2, finishedSpans.size());
-        assertEquals(parentSpan, finishedSpans.get(0));
-        assertEquals(span, finishedSpans.get(1));
-        assertEquals(finishedSpans.get(0).context().spanId(), finishedSpans.get(1).parentId());
+        assertEquals(parentSpan, finishedSpans.get(1));
+        assertEquals(span, finishedSpans.get(0));
+        assertEquals(finishedSpans.get(1).context().spanId(), finishedSpans.get(0).parentId());
     }
 
     @Test
@@ -164,7 +169,7 @@ public class TracedExecutionContextTest {
                 }
             }, ec);
 
-            await().atMost(TestUtils.DEFAULT_TIMEOUT, TimeUnit.SECONDS)
+            await().atMost(TestUtils.DEFAULT_CALLBACK_SYNC_TIMEOUT, TimeUnit.SECONDS)
                 .until(TestUtils.finishedSpansSize(mockTracer), equalTo(1));
 
             List<MockSpan> finishedSpans = mockTracer.finishedSpans();

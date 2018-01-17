@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Callable;
 
 import akka.dispatch.Mapper;
@@ -24,13 +25,15 @@ import scala.concurrent.duration.Duration;
 
 import static akka.dispatch.Futures.future;
 import static akka.dispatch.Futures.sequence;
+import static org.awaitility.Awaitility.await;
+import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 public class TracedAutoFinishExecutionContextTest {
-    static final MockTracer mockTracer = new MockTracer(new AutoFinishScopeManager(),
+    final MockTracer mockTracer = new MockTracer(new AutoFinishScopeManager(),
         MockTracer.Propagator.TEXT_MAP);
 
     @Before
@@ -70,6 +73,8 @@ public class TracedAutoFinishExecutionContextTest {
         }
 
         Object result = Await.result(f, TestUtils.getDefaultDuration());
+        await().atMost(TestUtils.DEFAULT_CALLBACK_SYNC_TIMEOUT, TimeUnit.SECONDS)
+                .until(TestUtils.finishedSpansSize(mockTracer), equalTo(1));
         assertEquals(span, result);
         assertEquals(1, mockTracer.finishedSpans().size());
 
@@ -102,8 +107,9 @@ public class TracedAutoFinishExecutionContextTest {
             }
         }
 
-        Future f = sequence(futures, ExecutionContext.global());
-        Await.result(f, TestUtils.getDefaultDuration());
+        Await.result(sequence(futures, ExecutionContext.global()), TestUtils.getDefaultDuration());
+        await().atMost(TestUtils.DEFAULT_CALLBACK_SYNC_TIMEOUT, TimeUnit.SECONDS)
+                .until(TestUtils.finishedSpansSize(mockTracer), equalTo(1));
         assertEquals(1, mockTracer.finishedSpans().size());
         assertEquals(5, mockTracer.finishedSpans().get(0).tags().size());
     }
@@ -134,6 +140,8 @@ public class TracedAutoFinishExecutionContextTest {
 
         Future f2 = (Future)Await.result(f, TestUtils.getDefaultDuration());
         Await.result(f2, TestUtils.getDefaultDuration());
+        await().atMost(TestUtils.DEFAULT_CALLBACK_SYNC_TIMEOUT, TimeUnit.SECONDS)
+                .until(TestUtils.finishedSpansSize(mockTracer), equalTo(1));
         assertEquals(1, mockTracer.finishedSpans().size());
 
         MockSpan mockSpan = mockTracer.finishedSpans().get(0);
@@ -175,6 +183,8 @@ public class TracedAutoFinishExecutionContextTest {
         }
 
         Await.result(f, TestUtils.getDefaultDuration());
+        await().atMost(TestUtils.DEFAULT_CALLBACK_SYNC_TIMEOUT, TimeUnit.SECONDS)
+                .until(TestUtils.finishedSpansSize(mockTracer), equalTo(1));
         assertEquals(1, mockTracer.finishedSpans().size());
         assertEquals(3, mockTracer.finishedSpans().get(0).tags().size());
     }
