@@ -25,8 +25,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class TracedAbstractActorTest {
-    static final MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager());
-    static ActorSystem system;
+    final MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager());
+    ActorSystem system;
 
     @Before
     public void before() throws Exception {

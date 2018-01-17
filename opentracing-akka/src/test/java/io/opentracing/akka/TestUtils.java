@@ -14,7 +14,8 @@ import io.opentracing.util.GlobalTracer;
 public final class TestUtils {
     private TestUtils() {}
 
-    public final static int DEFAULT_TIMEOUT = 5;
+    public final static int DEFAULT_TIMEOUT = 3;
+    public final static int DEFAULT_CALLBACK_SYNC_TIMEOUT = 1;
 
     public static FiniteDuration getDefaultDuration() {
         return Duration.create(DEFAULT_TIMEOUT, "seconds");
